@@ -1,6 +1,6 @@
-' convert it with additional command line argument -DRELATIVE_INCLUDE="." to use locally
+' convert it with additional command line argument -DRELATIVE_INCLUDE="relative/absolute" to use locally
 !if %variable_exists("RELATIVE_INCLUDE")
-  !include %get_variable_value("RELATIVE_INCLUDE")/C4_Container.puml
+  !include ./C4_Container.puml
 !else
   !include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
 !endif
@@ -8,70 +8,50 @@
 ' Colors
 ' ##################################
 
-!global $NODE_FONT_COLOR = "#000000"
-!global $NODE_BG_COLOR = "#FFFFFF"
-!global $NODE_BORDER_COLOR = "#A2A2A2"
+!$NODE_FONT_COLOR ?= "#000000"
+!$NODE_BG_COLOR ?= "#FFFFFF"
+!$NODE_BORDER_COLOR ?= "#A2A2A2"
+
+' Labels
+' ##################################
+
+!$NODE_LEGEND_TEXT ?= "node"
 
 ' Styling
-' ##################################
-
-' orig was without background
-'UpdateElementStyle("node", $fontColor=$NODE_FONT_COLOR, $borderColor=$NODE_BORDER_COLOR)
-UpdateElementStyle("node", $bgColor=$NODE_BG_COLOR, $fontColor=$NODE_FONT_COLOR, $borderColor=$NODE_BORDER_COLOR)
-skinparam rectangle<<node>> {
-    FontStyle normal
-}
-
-' Layout
-' ##################################
-
-' comment if node should not be added to legend. No calculated legend extension required
-SetDefaultLegendEntries("person\nsystem\ncontainer\nexternal_person\nexternal_system\nexternal_container\nnode")
-
-' Line breaks
 ' ##################################
 
 ' PlantUML supports no automatic line breaks of "PlantUML containers" (C4 Deployment_Node is a "PlantUML container")
 ' therefore (Deployment_)Node() implements an automatic line break based on spaces (like in all other objects).
 ' If a $type contains \n then these are used (and no automatic space based line breaks are done)
 ' $NODE_TYPE_MAX_CHAR_WIDTH defines the automatic line break position
-!global $NODE_TYPE_MAX_CHAR_WIDTH = 35
-!global $NODE_DESCR_MAX_CHAR_WIDTH=32
+!$NODE_TYPE_MAX_CHAR_WIDTH ?= 35
+!$NODE_DESCR_MAX_CHAR_WIDTH ?= 32
 
-!unquoted function $breakNode($type, $widthStr)
-!$width = %intval($widthStr)
-!$multiLine = ""
-!if (%strpos($type, "\n") >= 0)
-  !while (%strpos($type, "\n") >= 0)
-    !$brPos = %strpos($type, "\n")
-    !$multiLine = $multiLine + %substr($type, 0, $brPos) + '</size>\n<size:'+$TECHN_FONT_SIZE+'>'
-    !$type = %substr($type, $brPos+2)
-  !endwhile
-!else
-  !while (%strlen($type)>$width)
-    !$brPos = $width
-    !while ($brPos>0 && %substr($type, $brPos, 1)!= ' ')
-      !$brPos = $brPos - 1
-    !endwhile
+UpdateElementStyle("node", $bgColor=$NODE_BG_COLOR, $fontColor=$NODE_FONT_COLOR, $borderColor=$NODE_BORDER_COLOR, $shape=$DEFAULT_SHAPE, $legendText="$NODE_LEGEND_TEXT")
+skinparam rectangle<<node>> {
+    FontStyle normal
+}
 
-    !if ($brPos < 1)
-      !$brPos = %strpos($type, " ")
-    !else
-    !endif
+' shortcuts with default colors
+' node specific: $techn is only used in old scripts, new scripts uses $type ($techn has to remain, it could be called via named argument)
+!unquoted procedure AddNodeTag($tagStereo, $bgColor="", $fontColor="", $borderColor="", $shadowing="", $shape="", $sprite="", $type="", $legendText="", $legendSprite="", $techn="", $borderStyle="", $borderThickness="")
+  !$type=$type+$techn
+  $addElementTagInclReuse("node", $tagStereo, $bgColor, $fontColor, $borderColor, $shadowing, $shape, $sprite, $type, $legendText, $legendSprite, $borderStyle, $borderThickness)
+!endprocedure
 
-    !if ($brPos > 0)
-      !$multiLine = $multiLine + %substr($type, 0, $brPos) + '</size>\n<size:'+$TECHN_FONT_SIZE+'>'
-      !$type = %substr($type, $brPos + 1)
-    !else
-      !$multiLine = $multiLine+ $type
-      !$type = ""
-    !endif
-  !endwhile
-!endif
-!if (%strlen($type)>0)
-  !$multiLine = $multiLine + $type
-!endif
-!return $multiLine
+' Layout
+' ##################################
+
+' comment if node should not be added to legend. No calculated legend extension required
+SetDefaultLegendEntries("person\nsystem\ncontainer\nexternal_person\nexternal_system\nexternal_container\nnode\nenterprise_boundary\nsystem_boundary\ncontainer_boundary\nboundary")
+
+' Line breaks
+' ##################################
+
+' $breakTechn() in C4 supports //...//; $breakNode() in C4_Deployment supports no //....//
+!unquoted function $breakNode($text, $widthStr)
+  !$usedNewLine = '</size>\n<size:'+$TECHN_FONT_SIZE+'>'
+  !return $breakText($text, $usedNewLine, $widthStr)
 !endfunction
 
 ' Elements
@@ -80,9 +60,9 @@ SetDefaultLegendEntries("person\nsystem\ncontainer\nexternal_person\nexternal_sy
 !function $getNode($label, $type, $descr, $sprite)
   !$nodeText = ""
   !if ($sprite != "")
-    !$nodeText = $nodeText + '<$'+$sprite+'>\n'
+    !$nodeText = $nodeText + $getSprite($sprite) + '\n'
   !endif
-  !$nodeText = $nodeText + '==' + $label
+  !$nodeText = $nodeText + '== ' + $breakText($label, "\n== ")
   !if ($type != "")
     !$nodeText = $nodeText + '\n<size:' + $TECHN_FONT_SIZE + '>[' + $breakNode($type, $NODE_TYPE_MAX_CHAR_WIDTH) + ']</size>'
   !endif
@@ -95,9 +75,9 @@ SetDefaultLegendEntries("person\nsystem\ncontainer\nexternal_person\nexternal_sy
 !function $getNode_L($label, $type, $descr, $sprite)
   !$nodeText = ""
   !if ($sprite != "")
-    !$nodeText = $nodeText + '<$'+$sprite+'>\l'
+    !$nodeText = $nodeText + $getSprite($sprite) + '\l'
   !endif
-  !$nodeText = $nodeText + '==' + $label
+  !$nodeText = $nodeText + '== ' + $breakText($label, "\l== ")
   !if ($type != "")
     !$nodeText = $nodeText + '\l<size:' + $TECHN_FONT_SIZE + '>[' + $breakNode($type, $NODE_TYPE_MAX_CHAR_WIDTH) + ']</size>'
   !endif
@@ -110,9 +90,9 @@ SetDefaultLegendEntries("person\nsystem\ncontainer\nexternal_person\nexternal_sy
 !function $getNode_R($label, $type, $descr, $sprite)
   !$nodeText = ""
   !if ($sprite != "")
-    !$nodeText = $nodeText + '<$'+$sprite+'>\r'
+    !$nodeText = $nodeText + $getSprite($sprite) + '\r'
   !endif
-  !$nodeText = $nodeText + '==' + $label
+  !$nodeText = $nodeText + '== ' + $breakText($label, "\r== ")
   !if ($type != "")
     !$nodeText = $nodeText + '\r<size:' + $TECHN_FONT_SIZE + '>[' + $breakNode($type, $NODE_TYPE_MAX_CHAR_WIDTH) + ']</size>'
   !endif
@@ -123,25 +103,43 @@ SetDefaultLegendEntries("person\nsystem\ncontainer\nexternal_person\nexternal_sy
 !endfunction
 
 !unquoted procedure Deployment_Node($alias, $label, $type="", $descr="", $sprite="", $tags="", $link="")
+!$sprite=$toElementArg($sprite, $tags, "ElementTagSprite", "node")
+' nodes $type reuses $techn definition of $tags
+!$type=$toElementArg($type, $tags, "ElementTagTechn", "node")
 rectangle "$getNode($label, $type, $descr, $sprite)$getProps()" $toStereos("node",$tags) as $alias $getLink($link)
 !endprocedure
 
 !unquoted procedure Deployment_Node_L($alias, $label, $type="", $descr="", $sprite="", $tags="", $link="")
+!$sprite=$toElementArg($sprite, $tags, "ElementTagSprite", "node")
+' nodes $type reuses $techn definition of $tags
+!$type=$toElementArg($type, $tags, "ElementTagTechn", "node")
 rectangle "$getNode_L($label, $type, $descr, $sprite)$getProps_L()" $toStereos("node",$tags) as $alias $getLink($link)
 !endprocedure
 
 !unquoted procedure Deployment_Node_R($alias, $label, $type="", $descr="", $sprite="", $tags="", $link="")
+!$sprite=$toElementArg($sprite, $tags, "ElementTagSprite", "node")
+' nodes $type reuses $techn definition of $tags
+!$type=$toElementArg($type, $tags, "ElementTagTechn", "node")
 rectangle "$getNode_R($label, $type, $descr, $sprite)$getProps_R()" $toStereos("node",$tags) as $alias $getLink($link)
 !endprocedure
 
 !unquoted procedure Node($alias, $label, $type="", $descr="", $sprite="", $tags="", $link="")
+!$sprite=$toElementArg($sprite, $tags, "ElementTagSprite", "node")
+' nodes $type reuses $techn definition of $tags
+!$type=$toElementArg($type, $tags, "ElementTagTechn", "node")
 rectangle "$getNode($label, $type, $descr, $sprite)$getProps()" $toStereos("node",$tags) as $alias $getLink($link)
 !endprocedure
 
 !unquoted procedure Node_L($alias, $label, $type="", $descr="", $sprite="", $tags="", $link="")
+!$sprite=$toElementArg($sprite, $tags, "ElementTagSprite", "node")
+' nodes $type reuses $techn definition of $tags
+!$type=$toElementArg($type, $tags, "ElementTagTechn", "node")
 rectangle "$getNode_L($label, $type, $descr, $sprite)$getProps_L()" $toStereos("node",$tags) as $alias $getLink($link)
 !endprocedure
 
 !unquoted procedure Node_R($alias, $label, $type="", $descr="", $sprite="", $tags="", $link="")
+!$sprite=$toElementArg($sprite, $tags, "ElementTagSprite", "node")
+' nodes $type reuses $techn definition of $tags
+!$type=$toElementArg($type, $tags, "ElementTagTechn", "node")
 rectangle "$getNode_R($label, $type, $descr, $sprite)$getProps_R()" $toStereos("node",$tags) as $alias $getLink($link)
 !endprocedure
